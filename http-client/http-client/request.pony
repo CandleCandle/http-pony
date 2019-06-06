@@ -30,3 +30,12 @@ class val Request
 		result.>append(" ")
 			.>append("HTTP/1.1")
 		result
+
+	fun box to_request(): String val => // TODO poor name; needs to be something along the lines of "converts this request object to something that can be sent over the wire."
+		let result: String trn = recover trn String end
+		result.>append(request_line())
+		request.>append("\r\n")
+		// headers
+		request.>append("\r\n")
+		// request body
+

@@ -42,25 +42,40 @@ actor SimpleHttpClient is HttpClient
 	be _request(request': Request val, p: Promise[HttpResult]) =>
 		TCPConnection(
 			_auth,
-			recover HttpConnectionNotify end,
+			recover HttpConnectionNotify(request', p) end,
 			request'.uri().host,
 			request'.uri().port
 			)
 
 class HttpConnectionNotify is TCPConnectionNotify
+	let _parser: ClientParser = IncrementalParser
+
+	// This pair should be paired; so that the correct promise is fulfilled when a request completes.
+	var _request: Request val // TODO make this a list of Requests
+	var _responder: Promise[HttpResult] // TODO make this a list of Promise; that get fulfilled in-order when connections are re-used.
+
+	new create(request: Request val, responder: Promise[HttpResult]) =>
+		_request = request
+		_responder = responder
+
 	fun ref received(
 		conn: TCPConnection ref,
 		data: Array[U8] iso,
 		times: USize
 		): Bool =>
-		conn.close()
+
+		match _parser.apply(consume data)
+		| let r: HttpResult => 
+			_responder(r)
+			conn.close() // TODO send the next request in the list?
+		end
 		true
 
 	fun ref connected(conn: TCPConnection ref) =>
-		None
+		conn.write(_request.to_request())
 
 	fun ref connect_failed(conn: TCPConnection ref) =>
-		None
+		_responder(TimeoutErrorConnect)
 
 //actor HttpConnection
 
