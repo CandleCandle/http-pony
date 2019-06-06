@@ -10,6 +10,7 @@ actor Main is TestList
 		TestWrapper.tests(TestURI, test)
 		TestWrapper.tests(TestClientParser, test)
 		TestWrapper.tests(TestResponse, test)
+		TestWrapper.tests(TestRequest, test)
 
 trait TestWrapped
 	fun all_tests(): Array[UnitTest iso]
