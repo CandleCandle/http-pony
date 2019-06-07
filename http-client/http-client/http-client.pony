@@ -2,13 +2,14 @@ use "collections"
 use "promises"
 use "net"
 
-primitive TimeoutErrorConnect
-primitive TimeoutErrorIntraByte
+primitive ErrorConnect
+primitive ErrorTimeoutConnect
+primitive ErrorTimeoutIntraByte
 
-type HttpResult is ( Response val | TimeoutErrorConnect | TimeoutErrorIntraByte )
+type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte )
 
-trait HttpClient
-	fun request(request': Request): Promise[HttpResult]
+trait tag HttpClient
+	fun tag request(request': Request): Promise[HttpResult]
 
 actor PoolingHttpClient is HttpClient
 	let _timeout_connect: U128 // nanos
@@ -21,7 +22,7 @@ actor PoolingHttpClient is HttpClient
 
 	fun tag request(request': Request): Promise[HttpResult] =>
 		let p = Promise[HttpResult]
-		p(TimeoutErrorConnect)
+		p(ErrorConnect)
 		p
 
 actor SimpleHttpClient is HttpClient
@@ -75,10 +76,7 @@ class HttpConnectionNotify is TCPConnectionNotify
 		conn.write(_request.to_request())
 
 	fun ref connect_failed(conn: TCPConnection ref) =>
-		_responder(TimeoutErrorConnect)
-
-//actor HttpConnection
-
+		_responder(ErrorConnect)
 
 
 // vi: sw=4 sts=4 ts=4 noet

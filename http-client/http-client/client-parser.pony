@@ -1,8 +1,8 @@
 use "text-reader"
 
-primitive _ParserStateReady
-primitive _ParserStateHeader
-primitive _ParserStateBody
+primitive _ParserStateReady fun val apply(): String val => "_ParserStateReady"
+primitive _ParserStateHeader fun val apply(): String val => "_ParserStateHeader"
+primitive _ParserStateBody fun val apply(): String val => "_ParserStateReady"
 type _ParserState is ( _ParserStateReady | _ParserStateHeader | _ParserStateBody )
 
 trait ClientParser
@@ -36,10 +36,13 @@ class IncrementalParser is ClientParser
 			end
 		end
 		try
-			if _response.has_header(HeaderContentLength) then
-				let expected = HeaderContentLength.parse(_response.first_header(HeaderContentLength)?)?
-				if _response.body_size() >= expected then
-					reset()
+			match _state
+			| _ParserStateBody =>
+				if _response.has_header(HeaderContentLength) then
+					let expected = HeaderContentLength.parse(_response.first_header(HeaderContentLength)?)?
+					if _response.body_size() >= expected then
+						reset()
+					end
 				end
 			end
 		end
@@ -49,7 +52,11 @@ class IncrementalParser is ClientParser
 		_response = Response.empty()
 
 	fun ref _parse_status_line(line: String) =>
-		_response.response_code = 200
+		_response.response_code = try
+				let start = line.find(" ")?
+				let finish = line.find(" ", 0, 1)?
+				line.substring(start+1, finish).u16()?
+			else 500 end
 		_state = _ParserStateHeader
 
 	fun ref _parse_header(line: String) =>
