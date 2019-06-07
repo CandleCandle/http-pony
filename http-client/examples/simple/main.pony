@@ -1,14 +1,22 @@
 use "../../http-client"
+use "net"
 
 actor Main
 	new create(env: Env) =>
 		
 		try
-			let c: HttpClient = SimpleHttpClient(env.root as AmbientAuth, 5_000_000_000, 1_000_000_000)
+			let c: HttpClient = SimpleHttpClient(TCPConnectAuth(env.root as AmbientAuth), None, 5_000_000_000, 1_000_000_000)
 
 			let t: Main tag = recover tag this end
-			c.request(Request(URI.create("http", "localhost", "4578", "/bar"))).next[None](t~dump_response(env))
-			c.request(Request(URI.create("http", "localhost", "4578", "/foo"))).next[None](t~dump_response(env))
+			c.request(recover val Request(URI.create("http", "localhost", "4578", "/bar")) end).next[None](t~dump_response(env))
+			c.request(recover val Request(URI.create("http", "localhost", "4578", "/foo")) end).next[None](t~dump_response(env))
+
+			let req: Request trn = recover trn Request(URI.create("http", "localhost", "4578", "/blah")) end
+			req.>with_method("PUT")
+				.>with_header(HeaderUserAgent, "pony-http")
+				.>with_header("RandomNoise", "blah")
+			c.request(consume req).next[None](t~dump_response(env))
+			
 		else
 			env.out.print("error.")
 		end

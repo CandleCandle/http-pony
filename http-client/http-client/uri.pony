@@ -1,6 +1,11 @@
 
+primitive SchemeHttp fun apply(): String val => "http"
+primitive SchemeHttps fun apply(): String val => "https"
+type Scheme is ( SchemeHttp | SchemeHttps )
+primitive Schemes fun apply(): Array[Scheme] val => [SchemeHttp; SchemeHttps]
+
 class val URI is Stringable
-	let scheme: String
+	let scheme: ( Scheme | String )
 	// authentication
 	let host: String
 	let port: String
@@ -8,7 +13,7 @@ class val URI is Stringable
 	let query: (String | None)
 	let fragment: (String | None)
 
-	new val create(scheme': String, host': String, port': String, path': String, query': (String | None) = None, fragment': (String | None) = None) =>
+	new val create(scheme': ( Scheme | String ), host': String, port': String, path': String, query': (String | None) = None, fragment': (String | None) = None) =>
 		scheme = scheme'
 		host = host'
 		port = port'
@@ -21,7 +26,7 @@ class val URI is Stringable
 	fun string(): String iso^ =>
 		recover iso 
 			let s = String()
-			s.>append(scheme)
+			s.>append(match scheme | let sc: String => sc | let sc: Scheme => sc() end )
 				.>append("://")
 				.>append(host)
 				.>append(":")

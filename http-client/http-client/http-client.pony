@@ -1,6 +1,7 @@
 use "collections"
 use "promises"
 use "net"
+use "net/ssl"
 
 primitive ErrorConnect
 primitive ErrorTimeoutConnect
@@ -9,7 +10,7 @@ primitive ErrorTimeoutIntraByte
 type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte )
 
 trait tag HttpClient
-	fun tag request(request': Request): Promise[HttpResult]
+	fun tag request(request': Request val): Promise[HttpResult]
 
 actor PoolingHttpClient is HttpClient
 	let _timeout_connect: U128 // nanos
@@ -20,7 +21,7 @@ actor PoolingHttpClient is HttpClient
 		_timeout_connect = timeout_connect
 		_timeout_intra_byte = timeout_intra_byte
 
-	fun tag request(request': Request): Promise[HttpResult] =>
+	fun tag request(request': Request val): Promise[HttpResult] =>
 		let p = Promise[HttpResult]
 		p(ErrorConnect)
 		p
@@ -28,10 +29,12 @@ actor PoolingHttpClient is HttpClient
 actor SimpleHttpClient is HttpClient
 	let _timeout_connect: U128 // nanos
 	let _timeout_intra_byte: U128 // nanos
-	let _auth: AmbientAuth
+	let _auth: TCPConnectAuth
+	let _ssl: ( SSLContext | None )
 
-	new create(auth: AmbientAuth, timeout_connect: U128, timeout_intra_byte: U128) =>
+	new create(auth: TCPConnectAuth, ssl: ( SSLContext | None ) = None, timeout_connect: U128, timeout_intra_byte: U128) =>
 		_auth = auth
+		_ssl = ssl
 		_timeout_connect = timeout_connect
 		_timeout_intra_byte = timeout_intra_byte
 
