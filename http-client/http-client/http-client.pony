@@ -6,8 +6,9 @@ use "net/ssl"
 primitive ErrorConnect
 primitive ErrorTimeoutConnect
 primitive ErrorTimeoutIntraByte
+primitive ErrorSSLInit
 
-type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte )
+type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte | ErrorSSLInit )
 
 trait tag HttpClient
 	fun tag request(request': Request val): Promise[HttpResult]
@@ -44,21 +45,34 @@ actor SimpleHttpClient is HttpClient
 		p
 
 	be _request(request': Request val, p: Promise[HttpResult]) =>
-		TCPConnection(
-			_auth,
-			recover HttpConnectionNotify(request', p) end,
-			request'.uri().host,
-			request'.uri().port
-			)
+		var notify: ( None | TCPConnectionNotify iso ) = match _ssl
+			| None => recover HttpConnectionNotify(request', p) end
+			| let ssl: SSLContext =>
+				try
+					SSLConnection(
+						HttpConnectionNotify(request', p),
+						ssl.client(request'.uri().host)?
+						)
+				else p(ErrorSSLInit) end
+			end
+		match notify = None
+		| let n: TCPConnectionNotify iso =>
+			TCPConnection(
+				_auth,
+				consume n,
+				request'.uri().host,
+				request'.uri().port
+				)
+		end
 
-class HttpConnectionNotify is TCPConnectionNotify
+class iso HttpConnectionNotify is TCPConnectionNotify
 	let _parser: ClientParser = IncrementalParser
 
 	// This pair should be paired; so that the correct promise is fulfilled when a request completes.
 	var _request: Request val // TODO make this a list of Requests
 	var _responder: Promise[HttpResult] // TODO make this a list of Promise; that get fulfilled in-order when connections are re-used.
 
-	new create(request: Request val, responder: Promise[HttpResult]) =>
+	new iso create(request: Request val, responder: Promise[HttpResult]) =>
 		_request = request
 		_responder = responder
 
