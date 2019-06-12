@@ -7,8 +7,9 @@ primitive ErrorConnect
 primitive ErrorTimeoutConnect
 primitive ErrorTimeoutIntraByte
 primitive ErrorSSLInit
+primitive ErrorSSLHandshake
 
-type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte | ErrorSSLInit )
+type HttpResult is ( Response val | ErrorConnect | ErrorTimeoutConnect | ErrorTimeoutIntraByte | ErrorSSLInit | ErrorSSLHandshake )
 
 trait tag HttpClient
 	fun tag request(request': Request val): Promise[HttpResult]
@@ -75,6 +76,12 @@ class iso HttpConnectionNotify is TCPConnectionNotify
 	new iso create(request: Request val, responder: Promise[HttpResult]) =>
 		_request = request
 		_responder = responder
+
+	fun ref connecting(conn: TCPConnection ref, count: U32) =>
+		None
+
+	fun ref auth_failed(conn: TCPConnection ref) =>
+		_responder(ErrorSSLHandshake)
 
 	fun ref received(
 		conn: TCPConnection ref,

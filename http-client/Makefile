@@ -15,6 +15,7 @@ build:
 
 examples:
 	stable env ponyc -o bin examples/simple
+	stable env ponyc -o bin examples/ssl
 
 clean:
 	rm -f bin/*
