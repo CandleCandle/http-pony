@@ -1,7 +1,10 @@
 use "collections"
 use "promises"
-use "net"
-use "net/ssl"
+// use "net"
+// use "net/ssl"
+use "../net-clone3"
+use "../net-clone3/ssl"
+
 
 primitive ErrorConnect
 primitive ErrorTimeoutConnect
@@ -33,10 +36,12 @@ actor SimpleHttpClient is HttpClient
 	let _timeout_intra_byte: U128 // nanos
 	let _auth: TCPConnectAuth
 	let _ssl: ( SSLContext | None )
+	let _proxy: Proxy val
 
-	new create(auth: TCPConnectAuth, ssl: ( SSLContext | None ) = None, timeout_connect: U128, timeout_intra_byte: U128) =>
+	new create(auth: TCPConnectAuth, ssl: ( SSLContext | None ) = None, proxy: Proxy val = NoProxy, timeout_connect: U128, timeout_intra_byte: U128) =>
 		_auth = auth
 		_ssl = ssl
+		_proxy = proxy
 		_timeout_connect = timeout_connect
 		_timeout_intra_byte = timeout_intra_byte
 

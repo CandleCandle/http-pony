@@ -1,7 +1,9 @@
 use "../../http-client"
 use "../common"
-use "net"
-use "net/ssl"
+// use "net"
+// use "net/ssl"
+use "../../net-clone3"
+use "../../net-clone3/ssl"
 use "cli"
 use "files"
 
@@ -70,6 +72,7 @@ actor Main
 		let c: HttpClient = SimpleHttpClient(
 			auth,
 			consume ssl_context,
+			NoProxy,
 			5_000_000_000,
 			1_000_000_000
 			)

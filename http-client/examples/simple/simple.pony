@@ -1,6 +1,8 @@
 use "../../http-client"
 use "../common"
-use "net"
+use "../../net-clone3"
+use "../../net-clone3/ssl"
+// use "net"
 
 actor Main
 	new create(env: Env) =>
@@ -12,7 +14,7 @@ actor Main
 				return
 			end
 
-		let c: HttpClient = SimpleHttpClient(auth, None, 5_000_000_000, 1_000_000_000)
+		let c: HttpClient = SimpleHttpClient(auth, None, NoProxy, 5_000_000_000, 1_000_000_000)
 
 		c.request(recover val Request(URI.create("http", "localhost", "4578", "/bar")) end)
 			.next[None](Dump~dump_response(env))
