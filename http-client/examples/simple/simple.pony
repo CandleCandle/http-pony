@@ -14,9 +14,10 @@ actor Main
 				return
 			end
 
-		let c: HttpClient = SimpleHttpClient(auth, None, NoProxy, 5_000_000_000, 1_000_000_000)
+		let proxy: Proxy = NoProxy
+		let c: HttpClient = SimpleHttpClient(auth, None, proxy, 5_000_000_000, 1_000_000_000)
 
-		c.request(recover val Request(URI.create("http", "localhost", "4578", "/bar")) end)
+		c.request(recover val Request(URI.create("http", "neverssl.com", "80", "/")) end)
 			.next[None](Dump~dump_response(env))
 		c.request(recover val Request(URI.create("http", "localhost", "4578", "/foo")) end)
 			.next[None](Dump~dump_response(env))

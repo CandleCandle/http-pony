@@ -69,10 +69,11 @@ actor Main
 		req.>with_header(HeaderAccept, "*/*")
 			.>with_header(HeaderHost, "localhost")
 
+		let proxy: Proxy = NoProxy
 		let c: HttpClient = SimpleHttpClient(
 			auth,
 			consume ssl_context,
-			NoProxy,
+			proxy,
 			5_000_000_000,
 			1_000_000_000
 			)

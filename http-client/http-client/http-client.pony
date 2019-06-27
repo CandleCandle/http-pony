@@ -62,10 +62,10 @@ actor SimpleHttpClient is HttpClient
 				else p(ErrorSSLInit) end
 			end
 		match notify = None
-		| let n: TCPConnectionNotify iso =>
+		| let notify': TCPConnectionNotify iso =>
 			TCPConnection(
 				_auth,
-				consume n,
+				_proxy(consume notify'),
 				request'.uri().host,
 				request'.uri().port
 				)

@@ -2,20 +2,20 @@
 use "../net-clone3"
 
 interface Proxy
-	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify
+	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify iso^
 
 class val NoProxy is Proxy
-	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify => wrap
+	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify iso^ => wrap
 
 class val HttpProxy is Proxy
 	let _host: String
 	let _port: String
 
-	new create(host: String, port: String) =>
+	new val create(host: String, port: String) =>
 		_host = host
 		_port = port
 
-	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify =>
+	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify iso^ =>
 		HttpProxyNotify(_host, _port, consume wrap)
 
 
@@ -27,20 +27,17 @@ type _HttpProxyState is ( _HttpProxyStateDisconnected | _HttpProxyStateConnected
 class iso HttpProxyNotify is TCPConnectionNotify
 	let _host: String
 	let _service: String
-	let _wrapped: TCPConnectionNotify
+	let _wrapped: TCPConnectionNotify ref
 	var _state: _HttpProxyState = _HttpProxyStateDisconnected
-	let _parser: StreamingParser
+	var _parser: (None | StreamingParser ) = None
 
 	var _destination_host: ( None | String ) = None
 	var _destination_service: ( None | String ) = None
 
-	new create(host: String, service: String, wrapped: TCPConnectionNotify iso) =>
+	new iso create(host: String, service: String, wrapped: TCPConnectionNotify iso) =>
 		_host = host
 		_service = service
 		_wrapped = consume wrapped
-		_parser = StreamingParser({
-			(data: (Array[U8] iso)) => None //_wrapped.received(consume data)
-			})
 
 	fun ref proxy_via(host: String, service: String): (String, String) =>
 		_destination_host = host
@@ -48,6 +45,9 @@ class iso HttpProxyNotify is TCPConnectionNotify
 		(_host, _service)
 
 	fun ref connected(conn: TCPConnection ref) =>
+		// _parser = StreamingParser({
+		// 	(data: (Array[U8] iso))(c = conn) => _wrapped.received(c, consume data)
+		// 	} ref)
 		conn.write(
 			"CONNECT " + _host + ":" + _service + " HTTP/1.1\r\n" +
 			"Host: " + _host + ":" + _service + "\r\n" +
@@ -65,7 +65,19 @@ class iso HttpProxyNotify is TCPConnectionNotify
 		=>
 		match _state
 		| _HttpProxyStateConnected =>
-			_parser.apply(consume data)
+			let result = try (_parser as StreamingParser).apply(consume data) end
+			match result
+			| let response: Response val =>
+				if response.response_code < 400 then // XXX better error conditions and handling.
+					for b in response.body.values() do
+						_wrapped.received(conn, recover iso b.clone() end, 0)
+					end
+					_state = _HttpProxyStatePassThrough
+				else
+					_wrapped.auth_failed(conn)
+					conn.close()
+				end
+			end
 		| _HttpProxyStatePassThrough =>
 			_wrapped.received(conn, consume data, times)
 		end
@@ -97,4 +109,3 @@ class iso HttpProxyNotify is TCPConnectionNotify
 
 	fun ref unthrottled(conn: TCPConnection ref) =>
 		_wrapped.unthrottled(conn)
-
