@@ -81,7 +81,7 @@ class StreamingParser is ClientParser
 		end
 		None
 
-class IncrementalParser is ClientParser
+class CompleteParser is ClientParser
 	let _reader: LineReader = LineReader
 	var _response: Response trn = Response.empty()
 	var _state: _ParserState = _ParserStateReady

@@ -1,10 +1,7 @@
 use "collections"
 use "promises"
-// use "net"
-// use "net/ssl"
-use "../net-clone3"
-use "../net-clone3/ssl"
-
+use "net"
+use "net/ssl"
 
 primitive ErrorConnect
 primitive ErrorTimeoutConnect
@@ -72,7 +69,7 @@ actor SimpleHttpClient is HttpClient
 		end
 
 class iso HttpConnectionNotify is TCPConnectionNotify
-	let _parser: ClientParser = IncrementalParser
+	let _parser: ClientParser = CompleteParser
 
 	// This pair should be paired; so that the correct promise is fulfilled when a request completes.
 	var _request: Request val // TODO make this a list of Requests

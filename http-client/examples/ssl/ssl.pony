@@ -1,9 +1,7 @@
 use "../../http-client"
 use "../common"
-// use "net"
-// use "net/ssl"
-use "../../net-clone3"
-use "../../net-clone3/ssl"
+use "net"
+use "net/ssl"
 use "cli"
 use "files"
 
@@ -70,6 +68,7 @@ actor Main
 			.>with_header(HeaderHost, "localhost")
 
 		let proxy: Proxy = NoProxy
+		//let proxy: Proxy val = HttpProxy("some-proxy-host", "80")
 		let c: HttpClient = SimpleHttpClient(
 			auth,
 			consume ssl_context,

@@ -1,5 +1,13 @@
+use "net"
+use "format"
 
-use "../net-clone3"
+primitive Hex
+	fun to_hex_string(a: Array[U8] val): String val =>
+		let result: String trn = recover trn String end
+		for b in a.values() do
+			result.append(Format.int[U8](b where width=3, align=AlignRight, fmt=FormatHexBare))
+		end
+		result
 
 interface Proxy
 	fun apply(wrap: TCPConnectionNotify iso): TCPConnectionNotify iso^
@@ -19,9 +27,9 @@ class val HttpProxy is Proxy
 		HttpProxyNotify(_host, _port, consume wrap)
 
 
-primitive _HttpProxyStateDisconnected
-primitive _HttpProxyStateConnected
-primitive _HttpProxyStatePassThrough
+primitive _HttpProxyStateDisconnected fun apply(): String val => "_HttpProxyStateDisconnected"
+primitive _HttpProxyStateConnected fun apply(): String val => "_HttpProxyStateConnected"
+primitive _HttpProxyStatePassThrough fun apply(): String val => "_HttpProxyStatePassThrough"
 type _HttpProxyState is ( _HttpProxyStateDisconnected | _HttpProxyStateConnected | _HttpProxyStatePassThrough )
 
 class iso HttpProxyNotify is TCPConnectionNotify
@@ -29,7 +37,7 @@ class iso HttpProxyNotify is TCPConnectionNotify
 	let _service: String
 	let _wrapped: TCPConnectionNotify ref
 	var _state: _HttpProxyState = _HttpProxyStateDisconnected
-	var _parser: (None | StreamingParser ) = None
+	var _parser: StreamingParser = StreamingParser
 
 	var _destination_host: ( None | String ) = None
 	var _destination_service: ( None | String ) = None
@@ -42,30 +50,34 @@ class iso HttpProxyNotify is TCPConnectionNotify
 	fun ref proxy_via(host: String, service: String): (String, String) =>
 		_destination_host = host
 		_destination_service = service
+
 		(_host, _service)
 
 	fun ref connected(conn: TCPConnection ref) =>
-		// _parser = StreamingParser({
-		// 	(data: (Array[U8] iso))(c = conn) => _wrapped.received(c, consume data)
-		// 	} ref)
+		try
 		conn.write(
-			"CONNECT " + _host + ":" + _service + " HTTP/1.1\r\n" +
-			"Host: " + _host + ":" + _service + "\r\n" +
+			"CONNECT " + (_destination_host as String) + ":" + (_destination_service as String) + " HTTP/1.1\r\n" +
+			"Host: " + (_destination_host as String) + ":" + (_destination_service as String) + "\r\n" +
 			// Authentication // UserAgent // etc //
 			"\r\n"
 		)
 		_state = _HttpProxyStateConnected
+		else
+			conn.close()
+			_wrapped.connect_failed(conn)
+		end
 		None
 
 	fun ref received(
 		conn: TCPConnection ref,
-		data: Array[U8] iso,
+		data: Array[U8 val] iso,
 		times: USize)
 		: Bool
 		=>
+
 		match _state
 		| _HttpProxyStateConnected =>
-			let result = try (_parser as StreamingParser).apply(consume data) end
+			let result = _parser.apply(consume data)
 			match result
 			| let response: Response val =>
 				if response.response_code < 400 then // XXX better error conditions and handling.
@@ -73,6 +85,7 @@ class iso HttpProxyNotify is TCPConnectionNotify
 						_wrapped.received(conn, recover iso b.clone() end, 0)
 					end
 					_state = _HttpProxyStatePassThrough
+					_wrapped.connected(conn)
 				else
 					_wrapped.auth_failed(conn)
 					conn.close()
